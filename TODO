@@ -1,0 +1,6 @@
+- Add interlacing and immediate output for running commands
+- Change config to be a record of [name]:path for workspaces
+- Support nested workspaces
+- Add to Deno X registry
+- Rewrite to Rust -> Wasm
+- Submit as an addition to core Deno
