@@ -1,6 +1,7 @@
 # Deno Workspaces
 
-This is a Deno Workspace project inspired by Yarn workspaces (without most of the features).
+This is a Deno Workspace project inspired by Yarn workspaces (without most of
+the features).
 
 ## Usage
 
@@ -104,19 +105,20 @@ You can either run the script using the url or you can install it globally.
 ### Run from url
 
 ```sh
-deno run url --cwd example list
+deno run https://raw.githubusercontent.com/halvardssm/deno-workspaces/main/cli.ts --cwd example list
 ```
 
 ### Install globally
 
 ```sh
-deno install --allow-read --allow-run --name deno-workspaces url
+deno install --allow-read --allow-run --name deno-workspaces https://raw.githubusercontent.com/halvardssm/deno-workspaces/main/cli.ts
 deno-workspaces --cwd example list
 ```
 
 ## Configuration
 
-Deno Workspaces expects a `deno.json(c)` file in the working directory with the following property:
+Deno Workspaces expects a `deno.json(c)` file in the working directory with the
+following property:
 
 ```jsonc
 {
