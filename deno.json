@@ -1,6 +1,6 @@
 {
   "version": "0.0.1",
   "tasks": {
-    "test": "deno test"
+    "test": "deno test -A"
   }
 }

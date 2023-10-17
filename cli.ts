@@ -22,7 +22,7 @@ export function cliffySetup() {
   // deno-lint-ignore no-explicit-any
   const forwardArgsOption: Parameters<Command<any>["option"]> = [
     "-f, --forward <arguments:string>",
-    "Forwards the given commands. Can be provided multiple times.",
+    "Forwards the given commands. Usefull when providing flags. Can be provided multiple times. Will be appended to arguments.",
     { collect: true },
   ];
 
@@ -57,7 +57,7 @@ export function cliffySetup() {
     .command("workspace", "Runs a command in a workspace")
     .option(...shellRunnerOption)
     .option(...forwardArgsOption)
-    .arguments("<arguments...:string>")
+    .arguments("<workspaceName:string> <command:string> [arguments...:string]")
     .action(async (options, ...args) => {
       await new Runner({
         command: "workspace",
@@ -71,7 +71,7 @@ export function cliffySetup() {
     .option(...includeOption)
     .option(...excludeOption)
     .option(...parallelOption)
-    .arguments("<arguments...:string>")
+    .arguments("<command:string> [arguments...:string]")
     .action(async (options, ...args) => {
       await new Runner({
         command: "workspaces",
