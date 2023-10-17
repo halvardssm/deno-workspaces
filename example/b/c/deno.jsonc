@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "build": "echo 'build b/c'",
+    "test": "echo 'test b/c'"
+  }
+}

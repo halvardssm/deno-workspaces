@@ -2,8 +2,8 @@
   "@halvardssm/deno-workspaces": {
     "workspaces": [
       "a",
-      "b/c",
-      "b/d"
+      "b",
+      "c"
     ]
   }
 }

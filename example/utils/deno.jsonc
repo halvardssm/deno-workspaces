@@ -1,6 +1,0 @@
-{
-  "tasks": {
-    "build": "echo 'build utils'",
-    "test": "echo 'test utils'"
-  }
-}

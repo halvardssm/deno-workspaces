@@ -1,157 +1,128 @@
-import { resolve } from "https://deno.land/std@0.204.0/path/resolve.ts";
-import { initDenoWorkspace } from "./lib/mod.ts";
-import { parse } from "https://deno.land/std@0.204.0/flags/mod.ts";
-import { DenoWorkspacesError } from "./lib/error.ts";
+import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
+import denoConfig from "./deno.json" assert { type: "json" };
+import { Runner } from "./lib/runner.ts";
+import {
+  DenoWorkspacesError,
+  ERROR_SOURCE_EXTERNAL_PREFIX,
+  ERROR_SOURCE_WORKSPACES_POSTFIX,
+} from "./lib/error.ts";
 
-export type ArgCommands = ["workspace", string, string] | [
-  "workspaces",
-  "foreach",
-  string,
-] | ["workspaces", "list"];
-export type ParsedArgs = {
-  cwd: string;
-  helpText: string;
-  topLevelCommand: "workspace" | "workspaces";
-  args: string[];
-  forwardArgs: string[];
-  include: string[];
-  exclude: string[];
-};
+export function cliffySetup() {
+  // deno-lint-ignore no-explicit-any
+  const shellRunnerOption: Parameters<Command<any>["option"]> = [
+    "-s, --shell",
+    "Runs the provided args in the shell rather than a deno task.",
+  ];
+  // deno-lint-ignore no-explicit-any
+  const parallelOption: Parameters<Command<any>["option"]> = [
+    "-p, --parallel",
+    "Runs the workspaces in parallel.",
+  ];
 
-export function parseArgs(
-  { cwd, help, include, exclude, _: commands, "--": forwardArgs }: {
-    [x: string]: any;
-    _: (string | number)[];
-    "--": string[];
-  },
-) {
-  const parsedArgs = {
-    cwd,
-    helpText: "",
-    topLevelCommand: "workspace",
-    args: [],
-    forwardArgs,
-    include,
-    exclude,
-  } as ParsedArgs;
+  // deno-lint-ignore no-explicit-any
+  const forwardArgsOption: Parameters<Command<any>["option"]> = [
+    "-f, --forward <arguments:string>",
+    "Forwards the given commands. Can be provided multiple times.",
+    { collect: true },
+  ];
 
-  if (commands[0] === "workspace") {
-    if (help) {
-      parsedArgs.helpText = `Command: workspace
-Usage: workspace <workspaceName> <commandName> [-- forward args]
+  // deno-lint-ignore no-explicit-any
+  const includeOption: Parameters<Command<any>["option"]> = [
+    "-i, --include <matcher:string>",
+    "Only runs the commands against the workspaces fulfilling the pattern. Can be provided multiple times.",
+    { collect: true },
+  ];
 
-Runs a command in a workspace
-`;
-    } else if (commands.length !== 3) {
-      throw new DenoWorkspacesError(
-        "The workspace command only takes two arguments, use --help to read more.",
-      );
-    }
-    parsedArgs.topLevelCommand = "workspace";
-    parsedArgs.args = commands.slice(1).map((c) => c.toString());
-  } else if (commands[0] === "workspaces") {
-    const flagsHelpText = `Flags:
---include: Only runs the commands against the workspaces fulfilling the pattern. 
---exclude: Only runs the commands against the workspaces not fulfilling the pattern. 
-Note: If both 'include' and 'exclude' is provided, it will only run against the ones matching 'include' that does not match the 'exclude'.`;
+  // deno-lint-ignore no-explicit-any
+  const excludeOption: Parameters<Command<any>["option"]> = [
+    "-e, --exclude <matcher:string>",
+    "Only runs the commands against the workspaces not fulfilling the pattern. Can be provided multiple times.",
+    { collect: true },
+  ];
 
-    if (!["foreach", "list"].includes(commands[1].toString())) {
-      if (help) {
-        parsedArgs.helpText = `Command: workspaces
-Usage: [flags] workspaces <argName> [<commandName> [commandFlags] [-- forward args]]
--
-argName: Can be either 'list' to list the workspaces or 'foreach' to run a command against every workspace
+  const command = new Command()
+    // Main command.
+    .name("Deno Workspaces")
+    .version(denoConfig.version)
+    .description("Deno Workspace Plugin")
+    .globalOption("-d, --debug", "Enable debug output.")
+    .globalOption("-c, --cwd <path:string>", "Path to run the command in.", {
+      default: Deno.cwd(),
+    });
 
-` + flagsHelpText;
-      } else {
-        throw new DenoWorkspacesError(
-          "The workspaces command only allows `foreach` and `list`, use --help to read more.",
-        );
-      }
-    }
+  command
+    .action(() => {
+      command.showHelp();
+    })
+    .command("workspace", "Runs a command in a workspace")
+    .option(...shellRunnerOption)
+    .option(...forwardArgsOption)
+    .arguments("<arguments...:string>")
+    .action(async (options, ...args) => {
+      await new Runner({
+        command: "workspace",
+        arguments: args,
+        ...options,
+      }).commandWorkspace();
+    })
+    .command("workspaces", "Runs a command in the workspaces")
+    .option(...shellRunnerOption)
+    .option(...forwardArgsOption)
+    .option(...includeOption)
+    .option(...excludeOption)
+    .option(...parallelOption)
+    .arguments("<arguments...:string>")
+    .action(async (options, ...args) => {
+      await new Runner({
+        command: "workspaces",
+        arguments: args,
+        ...options,
+      }).commandWorkspaces();
+    })
+    .command("list", "List workspaces")
+    .option(...includeOption)
+    .option(...excludeOption)
+    .action(async (options, ...args) => {
+      await new Runner({
+        command: "list",
+        arguments: args,
+        ...options,
+      }).commandList();
+    })
+    .command("tester", "create your command, and see how its parsed")
+    .option(...shellRunnerOption)
+    .option(...forwardArgsOption)
+    .option(...includeOption)
+    .option(...excludeOption)
+    .arguments("[arguments...:string]")
+    .action((options, ...args) =>
+      console.info(
+        `Arguments: ${JSON.stringify(args)}\nOptions: ${
+          JSON.stringify(options)
+        }`,
+      )
+    );
 
-    if (commands[1] === "foreach") {
-      if (help) {
-        parsedArgs.helpText = `Command: workspaces foreach
-Usage: [flags] workspaces foreach <commandName> [commandFlags] [-- forward args]
-
-Runs a command in every workspace
--            
-` + flagsHelpText;
-      } else if (commands.length !== 3) {
-        {
-          throw new DenoWorkspacesError(
-            "The foreach command only takes one argument, use --help to read more.",
-          );
-        }
-      }
-      parsedArgs.topLevelCommand = "workspaces";
-      parsedArgs.args = commands.slice(1).map((c) => c.toString());
-    } else if (commands[1] === "list") {
-      if (help) {
-        parsedArgs.helpText = `Command: workspaces list
-Usage: [flags] workspaces list
-
-Shows all available workspaces
--
-` + flagsHelpText;
-      } else if (commands.length !== 2) {
-        {
-          throw new DenoWorkspacesError(
-            "The list command takes no arguments, use --help to read more.",
-          );
-        }
-      }
-      parsedArgs.topLevelCommand = "workspaces";
-      parsedArgs.args = commands.slice(1).map((c) => c.toString());
-    }
-  } else {
-    parsedArgs.helpText = `
-Usage: <command>
-
-Commands:
-- workspace: Runs a command in a workspace
-- workspaces foreach: Runs a command in every workspace
-- workspaces list: Lists all workspaces
-`;
-  }
-
-  return parsedArgs;
+  return command;
 }
 
 export async function main() {
-  const args = parse(Deno.args, {
-    alias: {
-      h: "help",
-    },
-    default: {
-      cwd: resolve(Deno.cwd(), "example"),
-    },
-    "--": true,
-    collect: ["include", "exclude"],
-    string: ["include", "exclude"],
-  });
-  console.log(args);
+  try {
+    const command = cliffySetup();
 
-  const parsedArgs = parseArgs(args);
+    await command.parse(Deno.args);
+  } catch (e) {
+    if (e instanceof DenoWorkspacesError) {
+      console.error(e.message + "\n\n" + ERROR_SOURCE_WORKSPACES_POSTFIX);
+      Deno.exit(1);
+    }
 
-  console.log(parsedArgs);
+    console.error(ERROR_SOURCE_EXTERNAL_PREFIX);
 
-  const { helpText, cwd } = parsedArgs;
-
-  if (helpText) {
-    let outputText = `
-Deno Workspaces
----
-` + helpText;
-
-    console.info(outputText);
-    Deno.exit();
+    throw e;
   }
-
-  await initDenoWorkspace(parsedArgs);
 }
 
 if (import.meta.main) {
-  main();
+  await main();
 }
