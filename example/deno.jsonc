@@ -1,0 +1,8 @@
+{
+  "@halvardssm/deno-workspaces":{
+    "workspaces":[
+      "backend",
+      "./frontend"
+    ]
+  }
+}
